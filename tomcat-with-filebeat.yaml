@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tomcat
+  labels:
+    app: tomcat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tomcat
+  template:
+    metadata:
+      labels:
+        app: tomcat
+    spec:
+      containers:
+      - name: filebeat
+        image: docker.elastic.co/beats/filebeat:7.5.0
+        args: [
+          "-c", "/usr/share/filebeat/filebeat.yml",
+          "-e",
+        ]
+        env:
+        - name: ELASTICSEARCH_HOST
+          value: https://quickstart-es-http
+        - name: ELASTICSEARCH_PORT
+          value: "9200"
+        - name: ELASTICSEARCH_USERNAME
+          value: elastic
+        - name: ELASTICSEARCH_PASSWORD
+          value: R71T3W1U4dEs74Nnz1QAY41W
+        - name: ELASTIC_CLOUD_ID
+          value:
+        - name: ELASTIC_CLOUD_AUTH
+          value:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: certs
+          mountPath: /etc/certificate/ca.crt
+          readOnly: true
+          subPath: ca.crt
+        - name: kcerts
+          mountPath: /etc/certificate/kibana/ca.crt
+          readOnly: true
+          subPath: ca.crt  
+        - name: logs-volume
+          mountPath: /usr/local/tomcat/logs
+        - name: filebeat-config
+          mountPath: /usr/share/filebeat/filebeat.yml
+          subPath: filebeat.yml
+      - name: tomcat
+        image: tomcat:8.0
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: logs-volume
+          mountPath: /usr/local/tomcat/logs
+      securityContext:
+        fsGroup: 1000
+      volumes:
+      - name: kcerts
+        secret:
+          secretName: quickstart-kb-http-certs-public        
+      - name: certs
+        secret:
+          secretName: quickstart-es-http-certs-public        
+      - name: logs-volume
+        emptyDir: {}
+      - name: filebeat-config
+        configMap:
+          name: filebeat-config
+          items:
+            - key: filebeat.yml
+              path: filebeat.yml
+---
