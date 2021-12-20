@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: heartbeat-deployment-config
+  namespace: default
+  labels:
+    k8s-app: heartbeat
+data:
+  heartbeat.yml: |-
+    heartbeat.monitors:
+      - type: icmp
+        id: ping-myhost
+        name: My Host Ping
+        hosts: ["localhost"]
+        schedule: '*/5 * * * * * *'
+        #      - type: tcp
+        #        id: myhost-tcp-echo
+        #        name: My Host TCP Echo
+        #        hosts: ["localhost:8080"]  # default TCP Echo Protocol
+        #        check.send: "Check"
+        #        check.receive: "Check"
+        #        schedule: '@every 5s'
+      - type: http
+        id: pod-status
+        name: Service Status
+        service.name: my-apm-service-name1
+        hosts: ["http://localhost:8080"]
+        check.response.status: [200]
+        schedule: '@every 5s'
+      - type: http
+        id: service-status
+        name: Service Status
+        service.name: my-apm-service-name2
+        hosts: ["http://tomcat-service:80"]
+        check.response.status: [200]
+        schedule: '@every 5s' 
+      - type: http
+        id: host-status
+        name: Service Status
+        service.name: my-apm-service-name3
+        hosts: ["http://10.51.96.70:32227"]
+        check.response.status: [200]
+        schedule: '@every 5s'  
+    heartbeat.scheduler:
+      limit: 10
+      
+
+    processors:
+      - add_cloud_metadata:
+
+    cloud.id: ${ELASTIC_CLOUD_ID}
+    cloud.auth: ${ELASTIC_CLOUD_AUTH}
+
+    output.elasticsearch:
+      hosts: ['${ELASTICSEARCH_HOST:elasticsearch}:${ELASTICSEARCH_PORT:9200}']
+      username: ${ELASTICSEARCH_USERNAME}
+      password: ${ELASTICSEARCH_PASSWORD}
+      ssl.certificate_authorities:
+        - /etc/certificate/ca.crt
